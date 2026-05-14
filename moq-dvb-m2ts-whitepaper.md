@@ -711,4 +711,58 @@ transport standards.
 
 ## 9. References
 
-<!-- TODO: Task 10 -->
+### Normative References
+
+- **ISO/IEC 13818-1** — Information technology — Generic coding of moving pictures
+  and associated audio information: Systems. ISO/IEC, 2023.
+
+- **RFC 9000** — QUIC: A UDP-Based Multiplexed and Secure Transport. Iyengar, J.
+  and M. Thomson (Eds.), IETF, 2021.
+
+- **draft-ietf-moq-transport** — Media Over QUIC Transport. IETF MOQ Working
+  Group. (Work in progress.)
+
+- **draft-ietf-moq-msf** — MOQT Streaming Format. IETF MOQ Working Group. (Work
+  in progress.)
+
+- **draft-gregoire-moq-msfts** — MPEG-2 Transport Stream Packaging for Media Over
+  QUIC Transport. Gregoire, P. and G. Simon. (Work in progress.)
+  https://mondain.github.io/msfts/draft-gregoire-moq-msfts.html
+
+- **ETSI EN 303 285** — Digital Video Broadcasting (DVB); MPEG-DASH Profile for
+  Transport of ISO BMFF Based DVB Services over IP Based Networks. ETSI.
+
+- **ETSI EN 303 560** — Digital Video Broadcasting (DVB); Native IP Broadcasting.
+  ETSI.
+
+- **ETSI EN 302 307** — Digital Video Broadcasting (DVB); Second generation
+  framing structure, channel coding and modulation systems for Broadcasting,
+  Interactive Services, News Gathering and other broadband satellite applications
+  (DVB-S2). ETSI.
+
+- **ETSI EN 302 307-2** — Digital Video Broadcasting (DVB); Second Generation
+  Extensions to the Second Generation (DVB-S2X). ETSI.
+
+- **ETSI EN 302 755** — Digital Video Broadcasting (DVB); Frame structure channel
+  coding and modulation for a second generation digital terrestrial television
+  broadcasting system (DVB-T2). ETSI.
+
+### Informative References
+
+- **ETSI TS 103 770** — Digital Video Broadcasting (DVB); DVB-I Specification.
+  ETSI.
+
+- **ETSI TS 103 769** — Digital Video Broadcasting (DVB); Multicast ABR
+  Delivery (DVB-MABR). ETSI.
+
+- **SCTE-35** — Digital Program Insertion Cueing Message. Society of Cable
+  Telecommunications Engineers.
+
+- **draft-ietf-moq-secure-objects** — Secure Objects for Media Over QUIC. IETF
+  MOQ Working Group. (Work in progress.)
+
+- **draft-ietf-moq-c4m** — Common Access Token for Media Over QUIC. IETF MOQ
+  Working Group. (Work in progress.)
+
+- **draft-ietf-moq-privacy-pass-auth** — Privacy Pass Authorization for Media
+  Over QUIC. IETF MOQ Working Group. (Work in progress.)
