@@ -557,15 +557,71 @@ contains the IDR frame and PSI needed by joining subscribers.
 
 ### 6.1 Complement
 
-<!-- TODO: Task 7 -->
+MOQ+M2TS does not require changes to any layer of the DVB stack below the
+application transport. DVB physical layers (DVB-S2, DVB-S2X, DVB-T2), GSE
+encapsulation, DVB-I service discovery, DVB codec profiles (AVC, HEVC, VVC,
+HE-AAC, AC-4), and content protection mechanisms are unaffected. Transport-stream
+scrambling and conditional access information are carried inside TS packets and are
+opaque to MOQT relays, which forward objects without inspecting payloads.
+
+Operators can deploy MOQT as an additional transport path for use cases where
+DVB-DASH's HTTP/TCP characteristics are limiting — contribution links where
+head-of-line blocking adds latency, or low-latency distribution scenarios. The
+MOQT path and the DVB-DASH path can coexist, fed from the same M2TS production
+workflow, serving different receiver populations or use cases. No existing
+DVB-DASH or DVB-NIP infrastructure needs to be removed or modified to introduce
+MOQT.
 
 ### 6.2 Bridge
 
-<!-- TODO: Task 7 -->
+The most operationally significant property of MSFTS for existing DVB deployments
+is that it requires no re-packaging of M2TS content. DVB-DASH requires elementary
+streams to be re-wrapped in ISO BMFF fragmented MP4 containers, which introduces
+an encoding boundary: content must pass through an ISO BMFF packager before it can
+be delivered. This packager adds latency, complexity, and a point of failure in
+the contribution or distribution chain.
+
+MSFTS eliminates this boundary. The publisher reads 188-byte or 192-byte source
+packets directly from the M2TS output of an existing encoder or muxer and writes
+them into MOQT object payloads. Encoders, muxers, playout systems, conditional
+access headends, and other equipment that already produce M2TS output require no
+modification. The MSFTS catalog fields — `m2tsProgramNumber`, `m2tsPmtPid`,
+`m2tsPcrPid`, `m2tsPsiInterval` — describe the program structure already present
+in the transport stream. The `initData` field carries PAT and PMT packets extracted
+from the live stream with no transformation. The existing DVB service information
+architecture is preserved in its entirety.
+
+This makes MOQ+M2TS a natural migration bridge: operators can introduce MOQT as
+an output path from their existing M2TS infrastructure, serve a new population of
+MOQT-capable receivers, and evaluate the technology without committing to a
+re-architecture of their production chain.
 
 ### 6.3 Replacement Path
 
-<!-- TODO: Task 7 -->
+For greenfield IP-only deployments — for example, a next-generation contribution
+network built on QUIC rather than TCP, or a future DVB IP profile that specifies
+MOQT as a delivery layer — MOQ+M2TS provides a unified transport for both
+contribution and distribution. In this scenario, MOQT replaces the HTTP/TCP stack
+of DVB-DASH across the entire delivery chain, from the encoder output to the
+receiver, while M2TS is retained as the media container. No other DVB technology
+changes.
+
+MOQT partial reliability maps to broadcast loss tolerance more naturally than TCP
+retransmission. In a broadcast environment, a decoder that misses a video access
+unit discards it and waits for the next IDR frame rather than stalling the
+presentation. MOQT's object expiry and priority mechanisms allow a publisher to
+express this behavior explicitly: lower-priority or time-expired objects may be
+dropped by relays without blocking delivery of subsequent content. TCP retransmits
+every byte, making it incompatible with this loss model except through
+application-layer workarounds.
+
+MOQT relay caching provides CDN-like distribution without requiring HTTP
+infrastructure. Relays retain MOQT groups according to cache policy and serve
+late-joining subscribers from cache, performing a function analogous to an HTTP
+CDN origin cache but operating on MOQT objects rather than HTTP segments. For DVB
+operators, this represents an opportunity to reduce dependency on HTTP CDN
+infrastructure for IP-delivered services while retaining the distribution
+efficiency that CDN caching provides.
 
 ## 7. Standardization Path
 
