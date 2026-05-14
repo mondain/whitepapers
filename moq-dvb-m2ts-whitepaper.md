@@ -313,6 +313,7 @@ cycle.
     }
   ]
 }
+```
 
 ### 4.2 Multi-Program Terrestrial Mux
 
@@ -369,6 +370,7 @@ language variants) use `altGroup` as described in Section 4.3.
     }
   ]
 }
+```
 
 ### 4.3 ABR Alternate Renditions
 
@@ -427,6 +429,7 @@ track before routing elementary-stream packets to a decoder.
     }
   ]
 }
+```
 
 ### 4.4 SCTE-35 and Splice Signaling
 
