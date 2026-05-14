@@ -447,15 +447,111 @@ SCTE-35 processing behavior.
 
 ### 5.1 Satellite Contribution and Distribution (DVB-S2/S2X)
 
-<!-- TODO: Task 6 -->
+**Topology:** A broadcast facility encodes a live event as a single-program
+transport stream at contribution quality and outputs 192-byte M2TS source packets.
+A MOQT publisher process at the uplink facility ingests the M2TS output and
+publishes it as a MOQT track with `m2tsPacketSize: 192` and
+`m2tsTimestampMode: "arrival-time"`. A MOQT relay co-located with the satellite
+uplink accepts the published track and makes it available to downstream
+subscribers.
+
+**Signal flow:** The relay forwards MOQT objects to DVB headend subscribers over
+QUIC, with the QUIC connection carried over IP encapsulated in GSE on the DVB-S2X
+bearer. Each headend subscribes to the contribution track, receives MOQT objects,
+reconstructs the 192-byte M2TS packet stream from the object payloads in group and
+object ID order, and passes the stream to its downstream processing chain.
+
+**MSFTS catalog configuration:** The catalog declares `m2tsRandomAccess: true`,
+guaranteeing that every MOQT group begins at an IDR frame together with the PAT
+and PMT packets required for program demultiplexing. The `m2tsPsiInterval` value
+bounds the maximum interval between PAT/PMT repetitions; headends use this to
+estimate maximum join latency. The `initData` field carries Base64-encoded PAT
+and PMT packets, enabling a joining headend to obtain program structure immediately
+without waiting for the next PSI repetition in the stream.
+
+**Key operational considerations:** PCR continuity is maintained within each MOQT
+group. A PCR discontinuity introduced between groups — for example, at a production
+cut — is signaled by the `discontinuity_indicator` bit in the adaptation field of
+the first PCR-carrying TS packet in the new group, following MPEG-2 TS conventions.
+The 4-octet M2TS arrival timestamp enables receiving headends to recover STC with
+precision beyond what PCR alone provides, which is significant for contribution
+feeds that feed into downstream encoding or record systems with tight timing
+requirements. Conditional access and scrambling information present in the
+transport stream passes through MOQT objects unchanged; MOQT relays do not parse
+or modify TS payloads.
 
 ### 5.2 Terrestrial Multicast Distribution (DVB-T2)
 
-<!-- TODO: Task 6 -->
+**Topology:** A regional headend receives an MPTS from a national uplink
+containing multiple program services. It must deliver each service to the
+DVB-T2 transmitter network that serves its coverage area. The headend runs a
+MOQT publisher that ingests the MPTS and publishes one MOQT track per program
+service using 188-byte TS packets. Each transmitter site runs a MOQT subscriber
+that selects the program tracks it is licensed to transmit and reconstructs a
+local MPTS for over-the-air emission.
+
+**Signal flow:** The regional headend publisher filters the incoming MPTS according
+to MSFTS multi-program handling rules: for each program, it retains only the
+packets belonging to that program (PAT rewritten to list one program, PMT, PCR PID,
+and all elementary stream PIDs listed in the PMT) and publishes them as a separate
+MOQT track. Each DVB-T2 transmitter site subscribes to the tracks it requires and
+appends received source packets in MOQT object order to reconstruct the packet
+stream. The transmitter then combines the per-program streams into a local MPTS for
+modulation and transmission on the DVB-T2 bearer.
+
+**MSFTS catalog configuration:** Each per-program track includes `m2tsProgramNumber`,
+`m2tsPmtPid`, and `m2tsPcrPid` so that transmitter subscribers can identify program
+structure without parsing PSI. The `m2tsPsiInterval` value tells each transmitter
+site the maximum interval between PAT and PMT repetitions. When a transmitter
+subscriber joins an active track, it must not begin transmission until it has
+received a valid PAT and PMT for the program; `m2tsPsiInterval` bounds how long it
+must wait before a valid PSI cycle is guaranteed to have been received.
+
+**Key operational considerations:** PAT rewriting at the publisher is required by
+the MSFTS specification: each per-program track must carry a PAT listing only the
+program present in that track. Transmitter sites that reconstruct a multi-program
+MPTS from multiple MOQT tracks must produce a new combined PAT for the local
+multiplex. Null packet handling — whether to strip null packets from individual
+program tracks or retain them — is a publisher policy decision; transmitters
+generating a local MPTS may need to add null packets to fill the fixed-bitrate
+DVB-T2 transport capacity.
 
 ### 5.3 Hybrid Broadcast-Broadband (DVB-NIP + QUIC Unicast)
 
-<!-- TODO: Task 6 -->
+**Topology:** A service provider delivers a live channel via DVB-NIP satellite
+multicast (DVB-MABR over DVB-S2X) for receivers with satellite capability and via
+MOQT unicast over QUIC for broadband-only devices or devices outside the satellite
+footprint. A MOQT relay bridges the two delivery paths: it ingests the channel
+from the DVB-NIP broadcast feed and republishes it as MOQT tracks accessible over
+QUIC. Both delivery paths carry the same M2TS-packaged content.
+
+**Signal flow:** Satellite-capable receivers subscribe via DVB-MABR and receive
+ISO BMFF-segmented content via DVB-DASH as specified in DVB-NIP. Broadband
+receivers connect to the MOQT relay over QUIC and subscribe to the M2TS-packaged
+MOQT track. The relay ingests from the broadcast feed, produces MOQT objects at
+group boundaries aligned to IDR frames, and forwards them to unicast subscribers.
+When both broadcast and unicast renditions of the same content are available at
+different bitrates, the MSFTS `altGroup` field links them so that subscribers aware
+of both paths can select the appropriate rendition.
+
+**MSFTS catalog configuration:** Tracks representing the satellite broadcast
+rendition and MOQT unicast renditions of the same channel are assigned the same
+`altGroup` value if they carry the same content. Video tracks in the alternate
+group must align Group boundaries at identical presentation timestamps, enabling a
+subscriber to switch between broadcast and unicast delivery at group boundaries
+without presentation discontinuity. Publishers providing alternate tracks must
+align PTS values at Group boundaries across tracks to enable seamless switching at
+the application layer.
+
+**Key operational considerations:** A subscriber switching between alternate tracks
+must treat the transition as a PCR discontinuity and reinitialize STC recovery
+from the first PCR on the new track. It must also re-parse PAT and PMT after the
+switch because PID assignments need not match between the satellite and unicast
+renditions. The MOQT relay does not parse DVB-MABR or ISO BMFF; it ingests at the
+M2TS packet level. The relay's MOQT cache policy determines how many groups are
+retained for late-joining subscribers; when `m2tsRandomAccess` is true, the relay
+should retain at minimum the first object of each cached group, as that object
+contains the IDR frame and PSI needed by joining subscribers.
 
 ## 6. Relationship to Existing DVB Standards
 
