@@ -223,7 +223,49 @@ TS packet of the new group.
 
 ## 3. Protocol Stack
 
-<!-- TODO: Task 4 -->
+The following table compares the protocol layers used by DVB-DASH, DVB-NIP, and
+MOQ+M2TS across a common set of delivery functions:
+
+| Layer | DVB-DASH | DVB-NIP | MOQ+M2TS |
+|---|---|---|---|
+| Application | MPEG DASH (MPD + segments) | DVB-I / DVB-DASH | MOQT + MSFTS catalog |
+| Media Packaging | ISO BMFF (fragmented MP4) | ISO BMFF via DVB-MABR | M2TS / TS source packets |
+| Transport | HTTP/1.1 or HTTP/2 | HTTP/2 over DVB-MABR | QUIC / WebTransport |
+| Encapsulation | TCP | GSE (DVB-NIP bearer) | QUIC datagrams or streams |
+| Physical | IP network | DVB-S2X, DVB-S2, DVB-T2 | DVB-S2X, DVB-S2, DVB-T2, or IP |
+
+The central architectural property of MOQ+M2TS is that it replaces only the
+application and transport layers. The DVB physical bearers (DVB-S2X, DVB-S2,
+DVB-T2), GSE encapsulation for broadcast IP delivery, and existing M2TS content
+production pipelines — encoders, muxers, conditional access systems, playout
+servers — are unchanged. This is the architectural foundation for the
+complement, bridge, and replacement analysis presented in Section 6.
+
+### QUIC and WebTransport Integration
+
+MOQT sessions are established over QUIC connections (RFC 9000). For DVB headend
+and network operator deployments, MOQT publishers and relays communicate directly
+over QUIC. For browser-based subscriber endpoints, WebTransport provides access to
+QUIC semantics through a browser API, enabling receivers without native QUIC stacks
+to subscribe to MOQT tracks.
+
+In a DVB headend topology, MOQT relays can be deployed at uplink facilities,
+regional distribution points, and CDN edge nodes. Relays forward MOQT objects
+using only MOQT metadata — namespace, track, group, and object identifiers — without
+parsing the M2TS payload. This makes relays format-agnostic and suitable for
+deployment as general network infrastructure between a broadcast facility publisher
+and geographically distributed subscriber endpoints.
+
+MOQT partial reliability maps to M2TS loss behavior in a way that TCP does not.
+When a MOQT object is not delivered — whether due to expiry, priority, or network
+loss — the receiving subscriber treats the reconstructed packet stream as
+discontinuous at that point and waits for the next random access point before
+resuming media presentation. This is consistent with how broadcast receivers
+handle TS packet loss: rather than stalling indefinitely waiting for retransmission,
+the receiver discards the incomplete access unit and resumes at the next IDR frame.
+When `m2tsRandomAccess` is set to true in the MSFTS catalog, every MOQT group
+boundary is guaranteed to be a valid recovery point, bounding the maximum
+disruption to one group interval regardless of how many objects are missed.
 
 ## 4. MSFTS Catalog Integration for DVB Services
 
