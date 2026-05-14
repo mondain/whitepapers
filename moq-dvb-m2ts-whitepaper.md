@@ -271,19 +271,177 @@ disruption to one group interval regardless of how many objects are missed.
 
 ### 4.1 Single-Program Satellite Feed
 
-<!-- TODO: Task 5 -->
+A live satellite contribution feed — for example, a studio-to-headend uplink —
+produces 192-octet M2TS source packets. The 4-octet timestamp prefix records the
+arrival or emission time of each TS packet, enabling precise STC recovery at
+receiving headends without relying solely on PCR values embedded in the stream.
+
+The MSFTS catalog for this feed sets `m2tsPacketSize` to 192 and
+`m2tsTimestampMode` to `"arrival-time"`. Setting `m2tsRandomAccess` to true
+guarantees that every MOQT group boundary coincides with an IDR frame,
+allowing any headend that joins mid-stream to begin decoding at the next group
+boundary without scanning for a random access point. The `m2tsPsiInterval`
+field declares the maximum PAT/PMT repetition interval in milliseconds; headend
+subscribers use this value to estimate how far back they must look to find valid
+PSI before their target presentation time. The `initData` field carries a
+Base64-encoded sequence of PAT and PMT packets, allowing subscribers to obtain
+program structure immediately at join without waiting for the next PSI repetition
+cycle.
+
+```json
+{
+  "version": 1,
+  "tracks": [
+    {
+      "name": "contribution-feed-a",
+      "namespace": "uplink.example.dvb/channel/1",
+      "packaging": "m2ts",
+      "isLive": true,
+      "targetLatency": 500,
+      "role": "video",
+      "mimeType": "video/mp2t",
+      "bitrate": 12000000,
+      "m2tsPacketSize": 192,
+      "m2tsPacketsPerObject": 32,
+      "m2tsProgramNumber": 1,
+      "m2tsPmtPid": 256,
+      "m2tsPcrPid": 257,
+      "m2tsPsiInterval": 100,
+      "m2tsRandomAccess": true,
+      "m2tsTimestampMode": "arrival-time",
+      "initData": "<base64-encoded PAT+PMT packets>"
+    }
+  ]
+}
 
 ### 4.2 Multi-Program Terrestrial Mux
 
-<!-- TODO: Task 5 -->
+A regional headend receiving a multi-program transport stream (MPTS) from a
+national uplink must filter it into per-program tracks before publishing over
+MOQT. MSFTS specifies the filtering rules: each per-program track carries only
+the packets belonging to one program — its PAT (rewritten to list only that
+program), its PMT, its PCR, and the elementary stream PIDs listed in that PMT.
+Null packets (PID 0x1FFF) may be retained or removed at the publisher's
+discretion. The `m2tsProgramNumber` field identifies the MPEG-2 program number
+carried by the track; `m2tsPmtPid` and `m2tsPcrPid` identify the PMT and PCR
+PIDs for that program.
+
+Programs that are independent services — carrying different content — are
+published as independent tracks without `altGroup`. Programs that are alternate
+renditions of the same content (e.g., the same feed at different bitrates or
+language variants) use `altGroup` as described in Section 4.3.
+
+```json
+{
+  "version": 1,
+  "tracks": [
+    {
+      "name": "service-news",
+      "namespace": "headend.example.dvb/mux/regional",
+      "packaging": "m2ts",
+      "isLive": true,
+      "role": "video",
+      "mimeType": "video/mp2t",
+      "bitrate": 6000000,
+      "m2tsPacketSize": 188,
+      "m2tsPacketsPerObject": 64,
+      "m2tsProgramNumber": 1,
+      "m2tsPmtPid": 256,
+      "m2tsPcrPid": 257,
+      "m2tsPsiInterval": 100,
+      "m2tsRandomAccess": true
+    },
+    {
+      "name": "service-sports",
+      "namespace": "headend.example.dvb/mux/regional",
+      "packaging": "m2ts",
+      "isLive": true,
+      "role": "video",
+      "mimeType": "video/mp2t",
+      "bitrate": 8000000,
+      "m2tsPacketSize": 188,
+      "m2tsPacketsPerObject": 64,
+      "m2tsProgramNumber": 2,
+      "m2tsPmtPid": 512,
+      "m2tsPcrPid": 513,
+      "m2tsPsiInterval": 100,
+      "m2tsRandomAccess": true
+    }
+  ]
+}
 
 ### 4.3 ABR Alternate Renditions
 
-<!-- TODO: Task 5 -->
+When the same content is available at multiple bitrates — for example, a live
+channel encoded at 8 Mbit/s and 4 Mbit/s — the MSFTS `altGroup` field links the
+tracks as alternate renditions. Subscribers may switch between tracks in an
+alternate group to adapt to available bandwidth.
+
+MSFTS imposes two requirements on alternate rendition tracks. First, Group
+boundaries must be aligned at identical presentation positions across all tracks
+in the group. Because each group begins at an IDR frame (when `m2tsRandomAccess`
+is true), this means IDR frames at the same presentation time across renditions.
+Second, after every track switch, the subscriber must treat the transition as a
+PCR discontinuity and reinitialize its STC from the first PCR value received on
+the new track. Additionally, because PID assignments are not required to match
+across alternate tracks, the subscriber must re-parse the PAT and PMT of the new
+track before routing elementary-stream packets to a decoder.
+
+```json
+{
+  "version": 1,
+  "tracks": [
+    {
+      "name": "video-high",
+      "namespace": "headend.example.dvb/channel/1",
+      "packaging": "m2ts",
+      "isLive": true,
+      "role": "video",
+      "mimeType": "video/mp2t",
+      "bitrate": 8000000,
+      "altGroup": 1,
+      "m2tsPacketSize": 188,
+      "m2tsPacketsPerObject": 64,
+      "m2tsProgramNumber": 1,
+      "m2tsPmtPid": 256,
+      "m2tsPcrPid": 257,
+      "m2tsPsiInterval": 100,
+      "m2tsRandomAccess": true
+    },
+    {
+      "name": "video-low",
+      "namespace": "headend.example.dvb/channel/1",
+      "packaging": "m2ts",
+      "isLive": true,
+      "role": "video",
+      "mimeType": "video/mp2t",
+      "bitrate": 4000000,
+      "altGroup": 1,
+      "m2tsPacketSize": 188,
+      "m2tsPacketsPerObject": 64,
+      "m2tsProgramNumber": 1,
+      "m2tsPmtPid": 512,
+      "m2tsPcrPid": 513,
+      "m2tsPsiInterval": 100,
+      "m2tsRandomAccess": true
+    }
+  ]
+}
 
 ### 4.4 SCTE-35 and Splice Signaling
 
-<!-- TODO: Task 5 -->
+SCTE-35 splice signaling is carried transparently in the MPEG-2 Transport Stream
+as `splice_info_section()` messages on a PID registered in the PMT. MSFTS does
+not alter or process SCTE-35 messages; they pass through MOQT objects as part of
+the source packet stream, opaque to relays.
+
+The `m2tsScte35Pid` catalog field is advisory: it allows subscribers to locate
+splice events by PID without parsing the PMT. Publishers that carry SCTE-35
+signaling should include this field. In DVB-DASH deployments, SCTE-35 events are
+often also surfaced as MPEG-DASH event streams in the manifest. Publishers
+integrating MOQ+M2TS alongside DVB-DASH may optionally surface splice events via
+the MSF Event Timeline mechanism defined in MSF; this document does not specify
+SCTE-35 processing behavior.
 
 ## 5. DVB Deployment Scenarios
 
