@@ -53,7 +53,52 @@ implementation or vendor specifics are included.
 
 ## 1. Introduction
 
-<!-- TODO: Task 2 -->
+DVB has standardized IP-based service delivery through two complementary
+specifications: DVB-DASH (ETSI EN 303 285), which defines a profile of MPEG DASH
+for adaptive bitrate streaming of DVB services over IP networks using the ISO Base
+Media File Format (ISO BMFF); and DVB Native IP Broadcasting (DVB-NIP, ETSI EN 303
+560), which specifies end-to-end native IP broadcast over DVB satellite and
+terrestrial bearers using Generic Stream Encapsulation (GSE) and multicast adaptive
+bitrate delivery (DVB-MABR). Both specifications assume HTTP and TCP at the
+application transport layer.
+
+As live contribution and distribution latency requirements tighten — particularly
+for sports, news, and event broadcasting — the characteristics of TCP become
+operationally significant. TCP's reliable, ordered byte-stream delivery model
+introduces head-of-line blocking: a single lost segment stalls delivery of all
+subsequent data until retransmission completes, regardless of whether later data
+could be rendered independently. HTTP request-response semantics compound this by
+coupling the receiver's consumption rate to the server's delivery cadence, adding
+latency at every transaction boundary.
+
+QUIC (RFC 9000) addresses these constraints at the transport layer. QUIC provides
+multiplexed streams over a single connection with independent loss recovery per
+stream, connection migration, and significantly reduced handshake latency compared
+to TLS over TCP. WebTransport extends QUIC's capabilities to browser endpoints.
+Media Over QUIC Transport (MOQT, draft-ietf-moq-transport) builds on QUIC to
+define an object-oriented publish-subscribe delivery model for media: publishers
+produce named objects organized into tracks and groups; subscribers receive objects
+with configurable reliability and priority; relays cache and forward objects using
+only MOQT metadata, without parsing media payloads.
+
+MPEG-2 Transport Stream (M2TS) is the media container format at the heart of
+existing DVB contribution and distribution workflows. Encoders, muxers, playout
+systems, conditional access headends, and terrestrial transmitters all operate on
+M2TS. Any IP transport technology that requires re-packaging M2TS into a different
+container — as DVB-DASH does with ISO BMFF — imposes an encoding boundary that
+adds latency, complexity, and cost. The MSFTS extension to the MOQT Streaming
+Format (draft-gregoire-moq-msfts) defines a packaging mode that carries M2TS
+source packets directly as MOQT objects, without re-wrapping or re-encoding.
+
+This paper describes the architectural framework for deploying MOQ+M2TS across
+DVB satellite (DVB-S2/S2X) and terrestrial (DVB-T2) networks, including hybrid
+broadcast-broadband topologies. It is addressed to two audiences: DVB member
+organizations evaluating MOQ+M2TS as a candidate transport for future DVB
+profiles, and IETF MOQ Working Group participants who need concrete DVB deployment
+scenarios to understand the applicability of MSFTS. The paper is self-contained:
+it provides sufficient background on MOQT, MSF, MSFTS, and DVB standards for
+readers unfamiliar with any of them. No implementation or vendor specifics are
+included.
 
 ## 2. Background
 
