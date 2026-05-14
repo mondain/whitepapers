@@ -684,7 +684,30 @@ Working Group. The MSFTS draft is openly available for review and comment.
 
 ## 8. Conclusion
 
-<!-- TODO: Task 9 -->
+This paper has presented a three-part architectural argument for MOQ+M2TS in DVB
+deployments.
+
+As a complement to existing infrastructure, MOQ+M2TS requires no changes to DVB
+physical layers, GSE encapsulation, service discovery, codec profiles, or content
+protection. It can be deployed alongside DVB-DASH and DVB-NIP for specific use
+cases without displacing any existing investment.
+
+As a migration bridge, MSFTS enables M2TS source packets to be carried over MOQT
+without re-encoding or re-packaging. Existing encoders, muxers, and playout
+systems require no modification. DVB service information — PAT, PMT, PCR, SCTE-35
+— is preserved in the transport stream and described in the MSFTS catalog. The
+encoding boundary imposed by ISO BMFF re-wrapping in DVB-DASH is eliminated.
+
+As a replacement path for greenfield or next-generation deployments, MOQ+M2TS
+replaces the HTTP/TCP transport stack with QUIC while retaining M2TS as the media
+container. MOQT partial reliability aligns with broadcast loss tolerance; MOQT
+relay caching provides CDN-equivalent distribution without HTTP infrastructure.
+
+The MSFTS extension to the MOQT Streaming Format is the technical foundation
+making this trajectory possible. DVB member organizations and IETF MOQ Working
+Group participants are invited to engage with the MSFTS draft and to contribute
+deployment experience that will inform its development and the evolution of DVB IP
+transport standards.
 
 ## 9. References
 
