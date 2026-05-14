@@ -104,23 +104,122 @@ included.
 
 ### 2.1 MPEG-2 Transport Stream and M2TS
 
-<!-- TODO: Task 3 -->
+MPEG-2 Transport Stream (ISO/IEC 13818-1) is a packetized multiplex format
+designed for reliable transmission of audio, video, and data over error-prone
+channels. The fundamental unit is the TS packet: a fixed-length 188-octet
+structure consisting of a 4-octet header followed by 184 octets of payload. The
+header includes a sync byte (0x47), a 13-bit Packet Identifier (PID) identifying
+the elementary stream or table carried in the packet, and control fields including
+a 4-bit continuity counter for loss detection.
+
+M2TS source packets extend the TS packet with a 4-octet source-packet timestamp
+prefix, yielding a 192-octet structure. The timestamp records the arrival or
+emission time of the TS packet and is used for System Time Clock (STC) recovery
+at receiving equipment.
+
+Program structure is described by Program Specific Information (PSI) tables
+carried in-band. The Program Association Table (PAT, PID 0x0000) lists all
+programs in the multiplex with pointers to their Program Map Tables (PMT). Each
+PMT identifies the elementary streams (video, audio, subtitles, data) belonging
+to its program and the PID carrying the Program Clock Reference (PCR) for timing
+recovery. PTS (Presentation Timestamp) and DTS (Decode Timestamp) values embedded
+in Packetized Elementary Stream (PES) headers synchronize audio and video
+presentation. A transport stream whose PAT lists exactly one program is a
+single-program transport stream (SPTS); one listing two or more programs is a
+multi-program transport stream (MPTS).
+
+SCTE-35 splice signaling is carried as splice_info_section() messages on a
+designated PID registered in the PMT, enabling downstream systems to detect
+program boundaries for dynamic ad insertion or content switching.
 
 ### 2.2 DVB-DASH
 
-<!-- TODO: Task 3 -->
+DVB-DASH (ETSI EN 303 285) defines a profile of MPEG Dynamic Adaptive Streaming
+over HTTP (MPEG DASH, ISO/IEC 23009-1) for delivery of DVB television services
+over IP networks. Media is packaged in ISO Base Media File Format (ISO BMFF)
+fragmented MP4 containers and delivered via HTTP. Clients request segments at
+bitrates matching their available bandwidth, enabling adaptive quality selection.
+
+The DVB-DASH codec toolkit includes AVC (H.264), HEVC (H.265), and VVC (H.266)
+for video; HE-AAC and AC-4 for audio. DVB-DASH supports HDTV, UHDTV, High
+Dynamic Range (HDR), and High Frame Rate (HFR) content. Service discovery —
+mapping service identifiers to DASH manifest URLs — is handled by DVB-I (ETSI TS
+103 770). DVB provides a conformance validator and HDR test content for
+interoperability testing.
 
 ### 2.3 DVB Native IP Broadcasting
 
-<!-- TODO: Task 3 -->
+DVB Native IP Broadcasting (DVB-NIP, ETSI EN 303 560) specifies an end-to-end
+native IP broadcast system for DVB satellite (DVB-S2, DVB-S2X) and terrestrial
+(DVB-T2) bearers. IP packets are encapsulated using Generic Stream Encapsulation
+(GSE) with robust header compression and logical link control, enabling efficient
+one-to-many IP delivery over broadcast physical layers.
+
+DVB-NIP uses DVB Multicast ABR (DVB-MABR, ETSI TS 103 769) for adaptive bitrate
+delivery over the broadcast path. DVB-MABR delivers DASH segments via multicast,
+allowing receivers to adapt quality without unicast round-trips. DVB-NIP
+integrates with DVB-I for service discovery and DVB-DASH for media streaming,
+forming a layered stack from physical bearer to application. Hybrid
+broadcast-broadband architectures combine the DVB-NIP broadcast path with unicast
+IP delivery to serve receivers without broadcast reception capability or to provide
+content not carried on the broadcast multiplex.
 
 ### 2.4 Media Over QUIC Transport
 
-<!-- TODO: Task 3 -->
+Media Over QUIC Transport (MOQT, draft-ietf-moq-transport) is a publish-subscribe
+delivery protocol built on QUIC (RFC 9000) and optionally WebTransport for browser
+endpoints. MOQT organizes media delivery around a four-level hierarchy:
+
+- **Namespace**: a hierarchical identifier scoping a set of tracks (e.g., a channel or service)
+- **Track**: a named, ordered sequence of objects representing a single media stream or catalog
+- **Group**: a subsequence of objects that can be independently decoded; typically aligned to a random access point
+- **Object**: the atomic unit of delivery, carrying a contiguous payload
+
+Publishers announce tracks and produce objects; subscribers express interest in
+tracks and receive objects. MOQT supports partial reliability: publishers assign
+delivery priority and expiry to objects, and relays may drop lower-priority or
+expired objects without stalling delivery of higher-priority content. This maps
+naturally to broadcast loss models where a missed video frame is better discarded
+than retransmitted.
+
+MOQT relays cache and forward objects using MOQT namespace, track, group, and
+object identifiers. Relays do not parse media payloads, making them
+format-agnostic and deployable as general infrastructure between publishers and
+subscribers.
 
 ### 2.5 MOQT Streaming Format and MSFTS
 
-<!-- TODO: Task 3 -->
+The MOQT Streaming Format (MSF, draft-ietf-moq-msf) defines a catalog model and
+common streaming conventions for tracks delivered over MOQT. The catalog is itself
+a MOQT track carrying JSON objects that describe the available media tracks, their
+packaging format, codec parameters, and subscription requirements. MSF defines
+common track fields including namespace, name, role, MIME type, bitrate, and
+alternate group membership.
+
+MSFTS (draft-gregoire-moq-msfts) extends MSF by registering the `"m2ts"`
+packaging value for carrying MPEG-2 TS and M2TS source packets over MOQT. When a
+track's `packaging` field is `"m2ts"`, additional catalog fields describe the
+transport stream structure:
+
+| Field | Type | Description |
+|---|---|---|
+| `m2tsPacketSize` | Number (required) | Source packet size: 188 (TS) or 192 (M2TS) |
+| `m2tsPacketsPerObject` | Number (optional) | Usual number of source packets per MOQT object |
+| `m2tsProgramNumber` | Number (optional) | MPEG-2 program number carried by this track |
+| `m2tsPmtPid` | Number (optional) | PID of the Program Map Table |
+| `m2tsPcrPid` | Number (optional) | PID carrying the Program Clock Reference |
+| `m2tsPsiInterval` | Number (optional) | Maximum PAT/PMT repetition interval in milliseconds |
+| `m2tsRandomAccess` | Boolean (optional) | When true, each group begins at a random access point |
+| `m2tsTimestampMode` | String (optional) | Timestamp semantics for 192-byte packets: `"arrival-time"` or `"opaque"` |
+| `m2tsScte35Pid` | Number (optional) | PID carrying SCTE-35 splice signaling |
+| `initData` | String (optional) | Base64-encoded initialization source packets (PAT+PMT) |
+
+Each MOQT object payload is a concatenation of whole source packets; the payload
+length must be an integer multiple of `m2tsPacketSize`. MOQT group boundaries are
+aligned to random access points (IDR frames, or qualifying Clean Random Access
+frames). PCR continuity is maintained within each group; a discontinuity between
+groups is signaled by the `discontinuity_indicator` bit in the first PCR-carrying
+TS packet of the new group.
 
 ## 3. Protocol Stack
 
