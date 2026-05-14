@@ -627,11 +627,60 @@ efficiency that CDN caching provides.
 
 ### 7.1 IETF MOQ Working Group
 
-<!-- TODO: Task 8 -->
+The MSFTS draft (`draft-gregoire-moq-msfts`) is submitted to the IETF MOQ Working
+Group as an informational document extending the MOQT Streaming Format
+(`draft-ietf-moq-msf`). The DVB deployment scenarios described in this paper
+constitute concrete evidence of real-world applicability: they demonstrate that
+the `"m2ts"` packaging value and its associated catalog fields are sufficient to
+describe the service structures, timing requirements, and operational constraints
+of DVB satellite contribution, terrestrial distribution, and hybrid
+broadcast-broadband delivery.
+
+Two areas of DVB practice may inform future revisions of MSFTS. First, PSI
+repetition rate signaling: the `m2tsPsiInterval` field currently declares the
+maximum interval between PAT/PMT repetitions, but DVB contribution feeds often
+use specific repetition patterns governed by headend equipment configuration.
+Finer-grained PSI signaling — for example, separate intervals for PAT and PMT,
+or minimum as well as maximum intervals — may be worth specifying as DVB
+deployment experience accumulates. Second, relay behavior for hybrid
+broadcast-broadband topologies: the interaction between DVB-MABR multicast
+delivery and MOQT unicast relay caching involves relay state and cache policy
+decisions that are not fully addressed in the current MSFTS or MSF
+specifications. Operational experience from hybrid deployments would inform
+whether additional relay guidance is needed.
+
+MOQ Working Group participants with DVB expertise or deployment access are
+invited to contribute findings to the working group.
 
 ### 7.2 DVB
 
-<!-- TODO: Task 8 -->
+MOQ+M2TS is a candidate profile for a future DVB specification, analogous in
+structure to DVB-DASH: a constrained profile of MOQT, MSF, and MSFTS tailored to
+DVB service delivery requirements. Such a profile would specify the subset of
+MOQT and MSFTS options applicable to DVB services and add DVB-specific constraints
+where needed.
+
+A DVB study mission or technical module addressing MOQ+M2TS would productively
+scope the following areas:
+
+- **Codec and bitrate constraints**: which DVB codec profiles (AVC, HEVC, VVC,
+  HE-AAC, AC-4, subtitles) and service bitrate ranges are in scope for
+  MOQ+M2TS delivery, and whether additional catalog fields are needed to describe
+  them.
+- **PSI repetition requirements**: mandatory minimum PAT/PMT repetition intervals
+  for live contribution and distribution use cases, expressed in terms of
+  `m2tsPsiInterval` or additional fields.
+- **DVB-I service discovery integration**: how MOQT-delivered services are
+  described in DVB-I service lists, including the mapping from DVB-I service
+  records to MOQT namespace and track identifiers.
+- **DVB-NIP interoperability**: requirements for relay and subscriber behavior
+  when MOQT delivery coexists with DVB-NIP/DVB-MABR delivery of the same
+  service.
+
+DVB member organizations — broadcasters, equipment vendors, conditional access
+providers, and network operators — are invited to evaluate MOQ+M2TS in their
+deployment contexts and to contribute findings to both DVB and the IETF MOQ
+Working Group. The MSFTS draft is openly available for review and comment.
 
 ## 8. Conclusion
 
